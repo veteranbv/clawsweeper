@@ -19,22 +19,44 @@ ensure_label() {
 
 post_issue_comment() {
   local body="$1"
-  gh api --method POST "repos/$repo/issues/$pr/comments" -f body="$body" >/dev/null
+  local attempt
+  for attempt in $(seq 1 5); do
+    if gh api --method POST "repos/$repo/issues/$pr/comments" -f body="$body" >/dev/null; then
+      return
+    fi
+    sleep "$((attempt * 5))"
+  done
+  return 1
 }
 
 post_inline_comment() {
   local body="$1" line="$2"
-  gh api --method POST "repos/$repo/pulls/$pr/comments" \
-    -f body="$body" \
-    -f commit_id="$head_sha" \
-    -f path='proof/live-label-sync-fixture.txt' \
-    -F line="$line" \
-    -f side='RIGHT' >/dev/null
+  local attempt
+  for attempt in $(seq 1 5); do
+    if gh api --method POST "repos/$repo/pulls/$pr/comments" \
+      -f body="$body" \
+      -f commit_id="$head_sha" \
+      -f path='proof/live-label-sync-fixture.txt' \
+      -F line="$line" \
+      -f side='RIGHT' >/dev/null; then
+      return
+    fi
+    sleep "$((attempt * 5))"
+  done
+  return 1
 }
 
 toggle_churn() {
-  gh issue edit "$pr" --repo "$repo" --add-label "$churn" >/dev/null
-  gh issue edit "$pr" --repo "$repo" --remove-label "$churn" >/dev/null
+  local attempt
+  for attempt in $(seq 1 5); do
+    if gh issue edit "$pr" --repo "$repo" --add-label "$churn" >/dev/null; then break; fi
+    sleep "$((attempt * 3))"
+  done
+  for attempt in $(seq 1 5); do
+    if gh issue edit "$pr" --repo "$repo" --remove-label "$churn" >/dev/null; then return; fi
+    sleep "$((attempt * 3))"
+  done
+  return 1
 }
 
 count_paginated() {
@@ -75,18 +97,24 @@ snapshot() {
 
 case "$mode" in
   preseed)
+    existing_issue_comments="$(count_paginated "repos/$repo/issues/$pr/comments")"
+    existing_inline_comments="$(count_paginated "repos/$repo/pulls/$pr/comments")"
     ensure_label "$gold" 'D4AF37'
     ensure_label "$platinum" 'E5E4E2'
     ensure_label "$churn" 'C5DEF5'
     gh issue edit "$pr" --repo "$repo" --remove-label "$platinum" >/dev/null 2>&1 || true
     gh issue edit "$pr" --repo "$repo" --add-label "$gold" >/dev/null
-    for index in $(seq -w 1 26); do
-      post_issue_comment "[synthetic proof] pre-review bot issue activity $index"
-    done
-    for index in $(seq -w 1 41); do
-      line=$((10#$index + 5))
-      post_inline_comment "[synthetic proof] pre-review bot inline activity $index" "$line"
-    done
+    if [ "$existing_issue_comments" -lt 26 ]; then
+      for index in $(seq "$((existing_issue_comments + 1))" 26); do
+        post_issue_comment "[synthetic proof] pre-review bot issue activity $(printf '%02d' "$index")"
+      done
+    fi
+    if [ "$existing_inline_comments" -lt 41 ]; then
+      for index in $(seq "$((existing_inline_comments + 1))" 41); do
+        line=$((index + 5))
+        post_inline_comment "[synthetic proof] pre-review bot inline activity $(printf '%02d' "$index")" "$line"
+      done
+    fi
     for _ in $(seq 1 30); do toggle_churn; done
     snapshot
     ;;
