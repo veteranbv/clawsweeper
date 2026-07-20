@@ -89,6 +89,7 @@ snapshot() {
     '{schema_version: 1, mode: $mode, repository: $repository, pull_request: $pull_request,
       head_sha: $head_sha, executed_sha: $executed_sha, fixed_sha: $fixed_sha,
       baseline_sha: $baseline_sha, run_url: $run_url,
+      runtime_adapter: "target allowlist only: veteranbv/* synthetic fixture profile",
       counts: {issue_comments: $issue_comments, timeline_events: $timeline_events,
         inline_review_comments: $inline_review_comments}, labels: $labels,
       action_report: ($action_report[0] // null)}' \
@@ -133,9 +134,10 @@ case "$mode" in
     snapshot
     ;;
   apply-before|apply-after|apply-blocked)
-    test -f "harness/proof/reports/$pr.md"
+    test -f "harness/proof/review-allowed/$pr.md"
+    node harness/proof/enable-fork-profile.mjs sut/config/target-repositories.json
     mkdir -p proof-output/items proof-output/closed proof-output/plans
-    cp "harness/proof/reports/$pr.md" "proof-output/items/$pr.md"
+    cp "harness/proof/review-allowed/$pr.md" "proof-output/items/$pr.md"
     args=(
       apply-decisions
       --target-repo "$repo"
