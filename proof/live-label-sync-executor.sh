@@ -121,16 +121,19 @@ case "$mode" in
     ;;
   postreview)
     post_issue_comment '[synthetic proof] post-review bot issue activity'
-    post_inline_comment '[synthetic proof] post-review bot inline activity' 100
     toggle_churn
+    snapshot
+    ;;
+  preparehuman)
+    gh issue edit "$pr" --repo "$repo" --remove-label "$platinum" >/dev/null 2>&1 || true
+    gh issue edit "$pr" --repo "$repo" --add-label "$gold" >/dev/null
     snapshot
     ;;
   posthuman)
     for index in $(seq -w 1 13); do
       post_issue_comment "[synthetic proof] guard-window bot issue activity $index"
     done
-    post_inline_comment '[synthetic proof] guard-window bot inline activity' 99
-    for _ in $(seq 1 30); do toggle_churn; done
+    for _ in $(seq 1 14); do toggle_churn; done
     snapshot
     ;;
   apply-before|apply-after|apply-blocked)

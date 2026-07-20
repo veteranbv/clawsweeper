@@ -16,7 +16,7 @@ on:
         default: "1"
         type: string
       question:
-        description: "Proof phase: preseed, postreview, posthuman, apply-before, apply-after, apply-blocked, or snapshot"
+        description: "Proof phase: preseed, postreview, preparehuman, posthuman, apply-before, apply-after, apply-blocked, or snapshot"
         required: true
         type: string
 
